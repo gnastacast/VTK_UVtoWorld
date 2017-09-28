@@ -7,6 +7,7 @@ if __name__ == '__main__':
 	import vtk
 	from vtk.util.colors import tomato, turquoise
 	import sys
+	import numpy as np
 	from uvtoworld import UVToWorldConverter, makeTexturedObjData
 	from uvtoworld import rendertools as rt
 	cellIds = vtk.vtkIdList()
@@ -17,9 +18,11 @@ if __name__ == '__main__':
 		scale = imageCenter[0] * 2
 		mousePos = (mousePos[0] / float(size[0]) , mousePos[1] / float(size[1]))
 		bgDot.SetPosition(scale * mousePos[0], scale * mousePos[1], 0)
-		targetPos = uvConverter.toWorldSpace(mousePos)
+		targetPos, normal = uvConverter.toWorldSpace(mousePos)
 		# d, i = tree.query(mousePos)
 		# targetPos = tCoordsArray[i]
+		normalPoint = np.add(targetPos,np.multiply(normal,0.1))
+		normalDot.SetPosition(normalPoint)
 		targetDot.SetPosition(targetPos)
 		bgRen.Render()
 		ren.Render()
@@ -33,6 +36,8 @@ if __name__ == '__main__':
 	ren, bgRen, imageCenter = rt.makeBG(renWin, imgPath)
 	targetDot = rt.makeDotActor((0,2,0),tomato,.05)
 	ren.AddActor(targetDot)
+	normalDot = rt.makeDotActor((0,2,0),turquoise,.02)
+	ren.AddActor(normalDot)
 	bgDot = rt.makeDotActor(imageCenter,turquoise,25)
 	bgRen.AddActor(bgDot)
 	iren = vtk.vtkRenderWindowInteractor()

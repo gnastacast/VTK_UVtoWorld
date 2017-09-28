@@ -11,6 +11,8 @@ import numpy as np
 from vtk.util import numpy_support
 import time
 
+from IPython import embed
+
 def timing(f):
     def wrap(*args):
         time1 = time.time()
@@ -61,6 +63,18 @@ class CleanTexturedPolyData(vtk.vtkProgrammableFilter):
 			self.cleanAlg.SetInput(self.polyData)
 		else:
 			self.cleanAlg.SetInputData(self.polyData)
+
+
+		self.normalGenerator = vtk.vtkPolyDataNormals()
+		self.normalGenerator.ComputePointNormalsOff()
+		self.normalGenerator.ComputeCellNormalsOn()
+		self.normalGenerator.AutoOrientNormalsOn()
+		self.normalGenerator.ConsistencyOn()
+		self.normalGenerator.SetSplitting(0)
+		if vtk.VTK_MAJOR_VERSION <= 5:
+			self.normalGenerator.SetInput(self.cleanAlg.GetOutput())
+		else:
+			self.normalGenerator.SetInputConnection(self.cleanAlg.GetOutputPort())
 
 	# Filter input through triangle filter before passing it to our algorithm.
 	if vtk.VTK_MAJOR_VERSION <= 5:
@@ -115,8 +129,10 @@ class CleanTexturedPolyData(vtk.vtkProgrammableFilter):
 
 		# Use cleanPolyData object to get rid of extra information left over
 		# including zero area triangles, edges, and cells 
-		self.cleanAlg.Update()
-		self.GetPolyDataOutput().ShallowCopy(self.cleanAlg.GetOutput())
+		# self.cleanAlg.Update()
+		
+		self.normalGenerator.Update()
+		self.GetPolyDataOutput().ShallowCopy(self.normalGenerator.GetOutput())
 
 def makeTexturedObjData(objPath):
 	""" Loads .obj into VTK polyData optimized for searching texture space. 
@@ -227,9 +243,11 @@ class UVToWorldConverter:
 			worldPoint(iterable of type float): 3D euclidian coordinate of the
 				point corresponding to the 2D texture coordinate 'p' in the VTK
 				polyData object's frame.
+			normalVector(iterable of type float): 3D vector (x,y,z) representing
+				the normal vector on the current face.
 
 		TODO:
-			* Return color and normal data
+			* Return color data
 		"""
 		# bounds = .02
 		# lowerBoundX = (self.npTCoords[:,0:2:5] > p[0]-bounds).any(axis=-1)
@@ -259,8 +277,9 @@ class UVToWorldConverter:
 				e = np.array(self.points.GetPoint(self.npPolys[i,1]))
 				f = np.array(self.points.GetPoint(self.npPolys[i,2]))
 				worldPoint = d*u + e*v + f*w
-				return worldPoint
-		return [0,0,0]
+				normalVector = self.polyData.GetCellData().GetNormals().GetTuple(i)
+				return worldPoint, normalVector
+		return [0,0,0], [0,0,0]
 
 if __name__ == '__main__':
 	import sys, getopt
